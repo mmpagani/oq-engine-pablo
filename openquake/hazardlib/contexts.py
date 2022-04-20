@@ -1133,6 +1133,9 @@ def get_probability_no_exceedance(ctx, poes, tom):
         is parametric
     """
     rate = ctx.occurrence_rate
+    ## If model is not Poisson, replace SourceGroup's TOM by PointSource's TOM
+    if type(ctx.temporal_occurrence_model) != type(tom):
+        tom = ctx.temporal_occurrence_model
     try:
         n = len(rate)
     except TypeError:  # float' has no len()

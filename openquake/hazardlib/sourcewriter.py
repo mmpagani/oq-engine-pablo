@@ -362,6 +362,11 @@ def get_distributed_seismicity_source_nodes(source):
     # Parse hypocentral depth distribution
     source_nodes.append(
         build_hypo_depth_dist(source.hypocenter_distribution))
+
+    if not isinstance(source.temporal_occurrence_model, PoissonTOM):
+        source_nodes.append(
+            build_temporal_occurrence_model(source.temporal_occurrence_model))
+
     return source_nodes
 
 
@@ -443,6 +448,18 @@ def get_source_attributes(source):
                 weights.append(data[0].weight)
             attrs['rup_weights'] = numpy.array(weights)
     return attrs
+
+def build_temporal_occurrence_model(tom):
+    """
+    :param tom:
+       a hazardlib.tom.BaseTOM object. Is used when the pointsource is other than Poisson
+    :returns:
+        a hypoList node containing N hypo nodes
+    """
+    parameters = Node("parameters", text=tom.parameters)
+    return Node("tom",
+                {"name": tom.__class__.__name__},
+                nodes=[parameters])
 
 
 @obj_to_node.add('AreaSource')

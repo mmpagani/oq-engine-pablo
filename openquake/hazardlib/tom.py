@@ -192,3 +192,108 @@ class PoissonTOM(BaseTOM):
             for i in range(n):
                 eff_time[i] = occurrence_rate[i] * self.time_span * poes[i]
         return numpy.exp(- eff_time)
+
+
+class NegativeBinomialTOM(BaseTOM):
+    """
+    Negative Binomial temporal occurrence model.
+    """
+    def __init__(self, time_span, occurrence_rate=None, parameters=None):
+        """
+        :param time_span:
+            The time interval of interest, in years.
+        :param occurrence_rate:
+            To initialize super_class (usually overriden by method get_probability_no_exceedance())
+        :param parameters:
+            (list) Parameters of the negbinom temporal model, in form of mean rate/dispersion (mu-alpha)
+            Kagan and Jackson, (2010)
+
+
+        """
+
+        super().__init__(time_span, occurrence_rate=occurrence_rate)
+        self.time_span = time_span
+        self.parameters = parameters
+
+    def get_probability_one_or_more_occurrences(self, occurrence_rate):
+        """
+        Calculates probability as ``1 - e ** (-occurrence_rate*time_span)``.
+
+        :param occurrence_rate:
+            The average number of events per year.
+        :return:
+            Float value between 0 and 1 inclusive.
+        """
+
+        return None
+
+    def get_probability_n_occurrences(self, occurrence_rate, num):
+        """
+        Calculate the probability of occurrence  of ``num`` events in the
+        constructor's ``time_span``.
+
+        :param occurrence_rate:
+            Annual rate of occurrence
+        :param num:
+            Number of events
+        :return:
+            Probability of occurrence
+        """
+
+        return None
+
+    def sample_number_of_occurrences(self, occurrence_rate, seeds=None):
+        """
+        Draw a random sample from the distribution and return a number
+        of events to occur.
+
+        The method uses the numpy random generator, which needs a seed
+        in order to get reproducible results. If the seed is None, it
+        should be set outside of this method.
+
+        :param occurrence_rate:
+            The average number of events per year.
+        :param seeds:
+            Random number generator seeds, one per each occurrence_rate
+        :return:
+            Sampled integer number of events to occur within model's
+            time span.
+        """
+
+        return None
+
+    def get_probability_no_exceedance(self, occurrence_rate, poes):
+        """
+        :param occurrence_rate:
+            The average number of events per year.
+        :param poes:
+            2D numpy array containing conditional probabilities that the
+            rupture occurrence causes a ground shaking value exceeding a
+            ground motion level at a site. First dimension represent sites,
+            second dimension intensity measure levels. ``poes`` can be obtained
+            calling the :func:`func <openquake.hazardlib.gsim.base.get_poes>`.
+        :returns:
+            2D numpy array containing probabilities of no exceedance. First
+            dimension represents sites, second dimension intensity measure
+            levels.
+
+        """
+
+        # Retrieves dispersion
+        alpha = self.parameters[1]
+        # Recovers NB2 Parametrization
+        tau = 1 / alpha
+        theta = tau / (tau + occurrence_rate)
+
+        # Defines tol for max quantile value to calculate infinite series.
+        tol = 1 - 1e-6
+
+        n_max = scipy.stats.nbinom.ppf(tol, tau, theta)
+        pdf = scipy.stats.nbinom.pmf(numpy.arange(0, n_max), tau, theta)
+        poes_1 = 1 - poes
+        prob_no_exceed = numpy.zeros(poes.shape)
+        for k, prob in enumerate(pdf):
+            p_k = prob * numpy.power(poes_1, k)
+            prob_no_exceed += p_k
+
+        return prob_no_exceed
